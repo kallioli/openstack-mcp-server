@@ -1,0 +1,1106 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenStack Key Manager API (curated)",
+    "version": "1.0"
+  },
+  "paths": {
+    "/v1/secrets": {
+      "get": {
+        "summary": "List secrets",
+        "description": "Lists the secrets of the project (metadata only, never the payload).",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of items to skip.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Filter by name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "alg",
+            "in": "query",
+            "description": "Filter by algorithm.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "Filter by mode.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bits",
+            "in": "query",
+            "description": "Filter by bit length.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "secret_type",
+            "in": "query",
+            "description": "Filter by type.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "acl_only",
+            "in": "query",
+            "description": "Only secrets shared with you through an ACL.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "e.g. created:desc",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create secret",
+        "description": "Stores a secret, with or without its payload.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "expiration": {
+                    "type": "string",
+                    "description": "ISO 8601 expiry date."
+                  },
+                  "algorithm": {
+                    "type": "string",
+                    "description": "e.g. aes"
+                  },
+                  "bit_length": {
+                    "type": "integer"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "description": "e.g. cbc"
+                  },
+                  "payload": {
+                    "type": "string",
+                    "description": "The secret itself. Omit it to upload it later with PUT."
+                  },
+                  "payload_content_type": {
+                    "type": "string",
+                    "description": "text/plain or application/octet-stream (required with payload)."
+                  },
+                  "payload_content_encoding": {
+                    "type": "string",
+                    "description": "base64 for binary payloads."
+                  },
+                  "secret_type": {
+                    "type": "string",
+                    "enum": [
+                      "symmetric",
+                      "public",
+                      "private",
+                      "passphrase",
+                      "certificate",
+                      "opaque"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/secrets/{uuid}": {
+      "get": {
+        "summary": "Show secret metadata",
+        "description": "Shows the metadata of a secret (not its payload).",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Upload secret payload",
+        "description": "Uploads the payload of a secret created without one. Pass the payload as a string body and its Content-Type header (text/plain or application/octet-stream).",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete secret",
+        "description": "Deletes a secret and its payload.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/secrets/{uuid}/payload": {
+      "get": {
+        "summary": "Show secret payload",
+        "description": "Returns the secret value itself. It is shown to the assistant: only read it when the user asks for it.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {}
+            }
+          }
+        },
+        "x-openstack-mcp-dangerous": true
+      }
+    },
+    "/v1/secrets/{uuid}/metadata": {
+      "get": {
+        "summary": "Show secret user metadata",
+        "description": "Lists the user metadata of a secret.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace secret user metadata",
+        "description": "Replaces the user metadata of a secret.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "type": "object",
+                    "description": "{\"key\": \"value\"} pairs."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add secret user metadata",
+        "description": "Adds one key/value pair.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "key",
+                  "value"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/secrets/{uuid}/acl": {
+      "get": {
+        "summary": "Show ACL of secrets",
+        "description": "Shows who can read the secret.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace ACL of secrets",
+        "description": "Replaces the access control list of the secret.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "read": {
+                    "type": "object",
+                    "properties": {
+                      "users": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "User ids allowed to read."
+                      },
+                      "project-access": {
+                        "type": "boolean",
+                        "description": "Whether every member of the project can read."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update ACL of secrets",
+        "description": "Adds users to the access control list of the secret.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "read": {
+                    "type": "object",
+                    "properties": {
+                      "users": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "User ids allowed to read."
+                      },
+                      "project-access": {
+                        "type": "boolean",
+                        "description": "Whether every member of the project can read."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete ACL of secrets",
+        "description": "Removes the access control list of the secret, back to the defaults.",
+        "tags": [
+          "secrets"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/containers": {
+      "get": {
+        "summary": "List containers",
+        "description": "Lists the secret containers of the project.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of items to skip.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Filter by name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "generic, rsa or certificate.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create container",
+        "description": "Groups secrets in a container (generic, rsa or certificate, e.g. for a TLS listener).",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "generic",
+                      "rsa",
+                      "certificate"
+                    ]
+                  },
+                  "secret_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "e.g. certificate, private_key, intermediates"
+                        },
+                        "secret_ref": {
+                          "type": "string",
+                          "description": "URL of the secret."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/containers/{uuid}": {
+      "get": {
+        "summary": "Show container",
+        "description": "Shows a container and its secret references.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete container",
+        "description": "Deletes a container (not its secrets).",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/containers/{uuid}/acl": {
+      "get": {
+        "summary": "Show ACL of containers",
+        "description": "Shows who can read the container.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace ACL of containers",
+        "description": "Replaces the access control list of the container.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "read": {
+                    "type": "object",
+                    "properties": {
+                      "users": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "User ids allowed to read."
+                      },
+                      "project-access": {
+                        "type": "boolean",
+                        "description": "Whether every member of the project can read."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update ACL of containers",
+        "description": "Adds users to the access control list of the container.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "read": {
+                    "type": "object",
+                    "properties": {
+                      "users": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "User ids allowed to read."
+                      },
+                      "project-access": {
+                        "type": "boolean",
+                        "description": "Whether every member of the project can read."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete ACL of containers",
+        "description": "Removes the access control list of the container, back to the defaults.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/containers/{uuid}/consumers": {
+      "get": {
+        "summary": "List container consumers",
+        "description": "Lists the services registered as using a container.",
+        "tags": [
+          "containers"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of items to skip.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/orders": {
+      "get": {
+        "summary": "List orders",
+        "description": "Lists the secret generation orders.",
+        "tags": [
+          "orders"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of items.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of items to skip.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create order",
+        "description": "Asks the key manager to generate a key or key pair.",
+        "tags": [
+          "orders"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "meta"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "key",
+                      "asymmetric"
+                    ]
+                  },
+                  "meta": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "algorithm": {
+                        "type": "string"
+                      },
+                      "bit_length": {
+                        "type": "integer"
+                      },
+                      "mode": {
+                        "type": "string"
+                      },
+                      "payload_content_type": {
+                        "type": "string"
+                      },
+                      "expiration": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/orders/{uuid}": {
+      "get": {
+        "summary": "Show order",
+        "description": "Shows an order and the secret it produced.",
+        "tags": [
+          "orders"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete order",
+        "description": "Deletes an order (not the secret).",
+        "tags": [
+          "orders"
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "description": "UUID of the item.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/quotas": {
+      "get": {
+        "summary": "Show quotas",
+        "description": "Shows the key manager quotas of the project.",
+        "tags": [
+          "quotas"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

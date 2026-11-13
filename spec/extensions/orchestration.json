@@ -1,0 +1,1837 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenStack Orchestration API (curated)",
+    "version": "1.0"
+  },
+  "paths": {
+    "/v1/{tenant_id}/stacks": {
+      "get": {
+        "summary": "List stacks",
+        "description": "Lists the stacks of the project, with filters and pagination.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Filter by stack name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status, e.g. CREATE_COMPLETE, UPDATE_FAILED.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Stacks having all these comma-separated tags.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of stacks.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "marker",
+            "in": "query",
+            "description": "Id of the last stack of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_keys",
+            "in": "query",
+            "description": "Sort key: stack_name, stack_status, creation_time or updated_time.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_dir",
+            "in": "query",
+            "description": "asc or desc.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "show_nested",
+            "in": "query",
+            "description": "Include nested stacks.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "global_tenant",
+            "in": "query",
+            "description": "All projects (admin).",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create stack",
+        "description": "Creates a stack from a HOT template. The stack is built asynchronously: poll its status and events.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "stack_name"
+                ],
+                "properties": {
+                  "stack_name": {
+                    "type": "string",
+                    "description": "Name of the stack (letters, digits, _ - .; starts with a letter)."
+                  },
+                  "template": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "HOT template, as an object or a YAML/JSON string. Either template or template_url."
+                  },
+                  "template_url": {
+                    "type": "string",
+                    "description": "URL of the template."
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Values of the template parameters, {\"name\": value}."
+                  },
+                  "environment": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "Environment (parameters, parameter_defaults, resource_registry)."
+                  },
+                  "environment_files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "files": {
+                    "type": "object",
+                    "description": "Files referenced by the template or environment, {\"path\": \"content\"}."
+                  },
+                  "timeout_mins": {
+                    "type": "integer",
+                    "description": "Timeout of the operation, in minutes."
+                  },
+                  "disable_rollback": {
+                    "type": "boolean",
+                    "description": "Keep the resources after a failure (default true)."
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/preview": {
+      "post": {
+        "summary": "Preview stack",
+        "description": "Shows the resources a template would create, without creating them.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "stack_name"
+                ],
+                "properties": {
+                  "stack_name": {
+                    "type": "string",
+                    "description": "Name of the stack (letters, digits, _ - .; starts with a letter)."
+                  },
+                  "template": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "HOT template, as an object or a YAML/JSON string. Either template or template_url."
+                  },
+                  "template_url": {
+                    "type": "string",
+                    "description": "URL of the template."
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Values of the template parameters, {\"name\": value}."
+                  },
+                  "environment": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "Environment (parameters, parameter_defaults, resource_registry)."
+                  },
+                  "environment_files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "files": {
+                    "type": "object",
+                    "description": "Files referenced by the template or environment, {\"path\": \"content\"}."
+                  },
+                  "timeout_mins": {
+                    "type": "integer",
+                    "description": "Timeout of the operation, in minutes."
+                  },
+                  "disable_rollback": {
+                    "type": "boolean",
+                    "description": "Keep the resources after a failure (default true)."
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}": {
+      "get": {
+        "summary": "Find stack",
+        "description": "Finds a stack by name or id; answers with a redirect to its full URL (stack_name/stack_id).",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}": {
+      "get": {
+        "summary": "Show stack details",
+        "description": "Shows a stack: status, parameters, outputs, timestamps.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resolve_outputs",
+            "in": "query",
+            "description": "Resolve the outputs (default true).",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update stack",
+        "description": "Updates a stack with a new template, parameters or environment (replaces them).",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "HOT template, as an object or a YAML/JSON string. Either template or template_url."
+                  },
+                  "template_url": {
+                    "type": "string",
+                    "description": "URL of the template."
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Values of the template parameters, {\"name\": value}."
+                  },
+                  "environment": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "Environment (parameters, parameter_defaults, resource_registry)."
+                  },
+                  "environment_files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "files": {
+                    "type": "object",
+                    "description": "Files referenced by the template or environment, {\"path\": \"content\"}."
+                  },
+                  "timeout_mins": {
+                    "type": "integer",
+                    "description": "Timeout of the operation, in minutes."
+                  },
+                  "disable_rollback": {
+                    "type": "boolean",
+                    "description": "Keep the resources after a failure (default true)."
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update stack (patch)",
+        "description": "Updates a stack, keeping the existing template and parameters that are not given (existing: true).",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "HOT template, as an object or a YAML/JSON string. Either template or template_url."
+                  },
+                  "template_url": {
+                    "type": "string",
+                    "description": "URL of the template."
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Values of the template parameters, {\"name\": value}."
+                  },
+                  "environment": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "Environment (parameters, parameter_defaults, resource_registry)."
+                  },
+                  "environment_files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "files": {
+                    "type": "object",
+                    "description": "Files referenced by the template or environment, {\"path\": \"content\"}."
+                  },
+                  "timeout_mins": {
+                    "type": "integer",
+                    "description": "Timeout of the operation, in minutes."
+                  },
+                  "disable_rollback": {
+                    "type": "boolean",
+                    "description": "Keep the resources after a failure (default true)."
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags."
+                  },
+                  "clear_parameters": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete stack",
+        "description": "Deletes a stack and every resource it created.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/abandon": {
+      "delete": {
+        "summary": "Abandon stack",
+        "description": "Deletes the stack but keeps its resources (if enabled on the cloud).",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "x-openstack-mcp-dangerous": true
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/actions": {
+      "post": {
+        "summary": "Run an action on stacks: suspend, resume, check, cancel_update, cancel_without_rollback",
+        "description": "Suspends, resumes or checks a stack, or cancels an update in progress. Body: one key, e.g. {\"suspend\": null}.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/StackAction_suspend"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StackAction_resume"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StackAction_check"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StackAction_cancel_update"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StackAction_cancel_without_rollback"
+                  }
+                ],
+                "x-openstack": {
+                  "discriminator": "action"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/template": {
+      "get": {
+        "summary": "Show stack template",
+        "description": "Returns the template of a stack.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/environment": {
+      "get": {
+        "summary": "Show stack environment",
+        "description": "Returns the environment of a stack.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/files": {
+      "get": {
+        "summary": "Show stack files",
+        "description": "Returns the files of a stack.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/outputs": {
+      "get": {
+        "summary": "List stack outputs",
+        "description": "Lists the outputs of a stack.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/outputs/{output_key}": {
+      "get": {
+        "summary": "Show stack output",
+        "description": "Shows one output of a stack.",
+        "tags": [
+          "stacks"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "output_key",
+            "in": "path",
+            "description": "Key of the output.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/resources": {
+      "get": {
+        "summary": "List stack resources",
+        "description": "Lists the resources of a stack.",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "nested_depth",
+            "in": "query",
+            "description": "Also list resources of nested stacks, down to this depth.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "with_detail",
+            "in": "query",
+            "description": "Show details.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by resource type.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/resources/{resource_name}": {
+      "get": {
+        "summary": "Show resource details",
+        "description": "Shows one resource of a stack, with its physical id.",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resource_name",
+            "in": "path",
+            "description": "Name of the resource in the template.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Mark resource unhealthy",
+        "description": "Marks a resource as unhealthy so that the next update replaces it.",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resource_name",
+            "in": "path",
+            "description": "Name of the resource in the template.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mark_unhealthy"
+                ],
+                "properties": {
+                  "mark_unhealthy": {
+                    "type": "boolean"
+                  },
+                  "resource_status_reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/resources/{resource_name}/metadata": {
+      "get": {
+        "summary": "Show resource metadata",
+        "description": "Shows the metadata of a resource.",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resource_name",
+            "in": "path",
+            "description": "Name of the resource in the template.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/resources/{resource_name}/signal": {
+      "post": {
+        "summary": "Send a signal to a resource",
+        "description": "Sends a signal to a resource (wait conditions, scaling policies).",
+        "tags": [
+          "resources"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resource_name",
+            "in": "path",
+            "description": "Name of the resource in the template.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/events": {
+      "get": {
+        "summary": "List stack events",
+        "description": "Lists the events of a stack, newest last; useful to understand a failure.",
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resource_action",
+            "in": "query",
+            "description": "Filter by action.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resource_status",
+            "in": "query",
+            "description": "Filter by status.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resource_name",
+            "in": "query",
+            "description": "Filter by resource.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "marker",
+            "in": "query",
+            "description": "Id of the last event of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_dir",
+            "in": "query",
+            "description": "asc or desc.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "nested_depth",
+            "in": "query",
+            "description": "Include nested stacks events.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/stacks/{stack_name}/{stack_id}/resources/{resource_name}/events": {
+      "get": {
+        "summary": "List resource events",
+        "description": "Lists the events of one resource.",
+        "tags": [
+          "events"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_name",
+            "in": "path",
+            "description": "Name of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "stack_id",
+            "in": "path",
+            "description": "UUID of the stack.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "resource_name",
+            "in": "path",
+            "description": "Name of the resource in the template.",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/validate": {
+      "post": {
+        "summary": "Validate template",
+        "description": "Validates a template and returns its parameters.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "HOT template, as an object or a YAML/JSON string. Either template or template_url."
+                  },
+                  "template_url": {
+                    "type": "string",
+                    "description": "URL of the template."
+                  },
+                  "environment": {
+                    "type": [
+                      "object",
+                      "string"
+                    ],
+                    "description": "Environment (parameters, parameter_defaults, resource_registry)."
+                  },
+                  "files": {
+                    "type": "object",
+                    "description": "Files referenced by the template or environment, {\"path\": \"content\"}."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/template_versions": {
+      "get": {
+        "summary": "List template versions",
+        "description": "Lists the template versions the cloud supports.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/template_versions/{template_version}/functions": {
+      "get": {
+        "summary": "List template functions",
+        "description": "Lists the intrinsic functions of a template version.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "template_version",
+            "in": "path",
+            "description": "e.g. heat_template_version.2018-08-31",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/resource_types": {
+      "get": {
+        "summary": "List resource types",
+        "description": "Lists the resource types available, e.g. OS::Nova::Server.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Filter by name pattern.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "support_status",
+            "in": "query",
+            "description": "Filter by support status.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/resource_types/{type_name}": {
+      "get": {
+        "summary": "Show resource type schema",
+        "description": "Shows the properties and attributes of a resource type.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "type_name",
+            "in": "path",
+            "description": "e.g. OS::Nova::Server",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/resource_types/{type_name}/template": {
+      "get": {
+        "summary": "Show resource type template",
+        "description": "Generates a template for a resource type.",
+        "tags": [
+          "templates"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "type_name",
+            "in": "path",
+            "description": "e.g. OS::Nova::Server",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "template_type",
+            "in": "query",
+            "description": "hot or cfn.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hot",
+                "cfn"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/build_info": {
+      "get": {
+        "summary": "Show build information",
+        "description": "Shows the version of the orchestration service.",
+        "tags": [
+          "general"
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Project id (filled automatically with the project acted on).",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StackAction_suspend": {
+        "type": "object",
+        "description": "Suspends the stack's resources.",
+        "properties": {
+          "suspend": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "suspend"
+        ],
+        "additionalProperties": false
+      },
+      "StackAction_resume": {
+        "type": "object",
+        "description": "Resumes a suspended stack.",
+        "properties": {
+          "resume": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "resume"
+        ],
+        "additionalProperties": false
+      },
+      "StackAction_check": {
+        "type": "object",
+        "description": "Checks that the stack's resources are healthy.",
+        "properties": {
+          "check": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "check"
+        ],
+        "additionalProperties": false
+      },
+      "StackAction_cancel_update": {
+        "type": "object",
+        "description": "Cancels an update in progress and rolls back.",
+        "properties": {
+          "cancel_update": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "cancel_update"
+        ],
+        "additionalProperties": false
+      },
+      "StackAction_cancel_without_rollback": {
+        "type": "object",
+        "description": "Cancels an update in progress without rolling back.",
+        "properties": {
+          "cancel_without_rollback": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "cancel_without_rollback"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
