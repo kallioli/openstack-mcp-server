@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, Icon } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { type Catalog, type HttpMethod, type Operation, bodyActions, dangerousActions, isDangerous } from "./catalog.js";
-import { OpenStackClient, type Project, endpointTail } from "./openstack/client.js";
+import { OpenStackClient, type Project, endpointTail, unsafePathReason } from "./openstack/client.js";
 import { type CloudCredentials, describeIdentity } from "./openstack/credentials.js";
 import { loadProjects } from "./projects.js";
 import { serviceInfo } from "./services.js";
@@ -281,6 +281,9 @@ export function createServer(options: ServerOptions): McpServer {
     }
     path = fillTemplate(path, params);
     if (/\{[^}]+\}/.test(path)) return text(`Unresolved placeholders in path ${path}. Provide them in path_params.`, true);
+    // Refused before matching: the URL sent must be the path validated against the catalog, segment for segment.
+    const unsafe = unsafePathReason(path);
+    if (unsafe) return text(`Invalid path ${path}: ${unsafe}.`, true);
 
     const matched = catalog.match(service.type, method, path);
     if (!matched) {
@@ -324,7 +327,7 @@ export function createServer(options: ServerOptions): McpServer {
     ]
       .filter(Boolean)
       .join(", ");
-    // Checked here, once the path is normalised and resolved, so no spelling of the path can skip it.
+    // Checked here, on the resolved path that is sent as is (no dot segments), so no spelling of the path can skip it.
     if (isDangerous(op, body)) {
       const actions = op.actions?.length ? ` [${bodyActions(body).join(", ")}]` : "";
       const what = `${service.type} ${method} ${path}${actions}${op.summary ? ` (${op.summary})` : ""}${where ? ` on ${where}` : ""}`;

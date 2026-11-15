@@ -281,6 +281,29 @@ describe("dangerous operations", () => {
     ]);
   });
 
+  it("refuses dot segments and backslashes that would reach another operation than the one checked", async () => {
+    const { client, cloud } = await connect();
+    const calls = [
+      // A Barbican secret payload through the harmless GET /v1/secrets/{uuid}.
+      { name: "openstack_get", arguments: { service: "key-manager", path: "/v1/secrets/x\\..\\s-1\\payload" } },
+      { name: "openstack_get", arguments: { service: "key-manager", path: "/v1/secrets/x/%2e%2E/s-1/payload" } },
+      { name: "openstack_get", arguments: { service: "compute", path: "/v2.1/servers/x/../../identity/v3/users" } },
+      // Swift object names keep their slashes, not their dot segments.
+      {
+        name: "openstack_request",
+        arguments: {
+          service: "object-store",
+          method: "POST",
+          path: "/v1/{account}/c/{object}",
+          path_params: { object: "a/../../../../compute/v2.1/servers/s1/action" },
+          body: { rebuild: { imageRef: "i" } },
+        },
+      },
+    ];
+    for (const call of calls) expect(textOf(await client.callTool(call))).toContain("Invalid path");
+    expect(cloud.apiCalls()).toHaveLength(0);
+  });
+
   it("asks the user through elicitation when the client supports it", async () => {
     for (const [answer, expected] of [
       [{ action: "accept", content: { confirm: true } }, 1],

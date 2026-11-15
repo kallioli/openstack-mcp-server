@@ -24,6 +24,13 @@ describe("endpoints", () => {
     expect(joinEndpoint("https://keystone:5000/v3/", "/v3/projects")).toBe("https://keystone:5000/v3/projects");
   });
 
+  it("refuses paths the URL parser would rewrite", () => {
+    for (const path of ["/v2.1/servers/x/../flavors", "/v2.1/servers/x\\..\\flavors", "/v2.1/servers/%2E%2e/flavors", "/v2.1/./servers"]) {
+      expect(() => joinEndpoint("https://cloud/compute/v2.1", path)).toThrow("Invalid path");
+    }
+    expect(joinEndpoint("https://swift/v1/AUTH_p1", "/v1/AUTH_p1/c/a..b/.hidden")).toBe("https://swift/v1/AUTH_p1/c/a..b/.hidden");
+  });
+
   it("finds what follows the version and the identity root", () => {
     expect(endpointTail("https://swift/v1/AUTH_p1")).toBe("AUTH_p1");
     expect(endpointTail("https://neutron:9696")).toBeUndefined();

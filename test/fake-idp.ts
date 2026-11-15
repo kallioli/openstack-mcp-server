@@ -32,3 +32,21 @@ export function fakeIdp(next: typeof fetch): FakeIdp {
   }) as typeof fetch;
   return { fetch: impl, tokenRequests, setIdentity: (i) => (identity = i) };
 }
+
+/**
+ * Plays the user on the consent page returned by /authorize: submits it with the cookie it set, as the browser would.
+ * Returns where the browser is sent next and the cookie to keep for the identity provider's callback.
+ */
+export async function consent(page: Response, decision = "allow"): Promise<{ location: URL; cookie: string }> {
+  const cookie = page.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  const html = await page.text();
+  const action = html.match(/<form method="post" action="([^"]+)"/)![1];
+  const request = html.match(/name="request" value="([^"]+)"/)![1];
+  const res = await fetch(action, {
+    method: "POST",
+    redirect: "manual",
+    headers: { "content-type": "application/x-www-form-urlencoded", cookie },
+    body: new URLSearchParams({ request, decision }),
+  });
+  return { location: new URL(res.headers.get("location")!), cookie };
+}

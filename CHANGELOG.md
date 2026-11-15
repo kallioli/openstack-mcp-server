@@ -18,9 +18,13 @@ First version, built on the architecture of [infomaniak-mcp-server](https://gith
   selection by region and interface from the service catalog, microversions.
 - Confirmation (elicitation or `confirm: true`) for deletions, destructive server, volume and share actions, Heat stack
   abandon and Barbican secret payloads.
+- Paths with dot segments (`..`, `%2e%2e`) or backslashes are refused, so the URL sent is always the operation checked
+  against the catalog (service restrictions and confirmations); redirects from OpenStack are not followed.
 
 ### Access control and administration
 - Admin portal (English / French) with onboarding, OpenStack connections (import from `clouds.yaml` or `openrc`,
   live test, default project), MCP tokens, OAuth rules, service exposure and settings.
-- OAuth through any OpenID Connect identity provider, with optional Keystone federation for personal access.
+- OAuth through any OpenID Connect identity provider, with optional Keystone federation for personal access. Users
+  approve each client on a consent page naming where their access is sent, and the authorization is bound to their
+  browser; refresh tokens expire after 30 days without use.
 - Static API keys acting with the cloud of the `OS_*` variables.

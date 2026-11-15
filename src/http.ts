@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import type { Request, RequestHandler, Response } from "express";
+import express, { type Request, type RequestHandler, type Response } from "express";
 import { getOAuthProtectedResourceMetadataUrl, mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -98,6 +98,11 @@ export function createHttpApp(
   app.use((req, res, next) => {
     const active = currentOAuth();
     if (active) active.router(req, res, next);
+    else next();
+  });
+  app.post("/oauth/consent", express.urlencoded({ extended: false, limit: "16kb" }), (req, res, next) => {
+    const active = currentOAuth();
+    if (active) void active.provider.handleConsent(req, res);
     else next();
   });
   app.get("/oauth/callback", (req, res, next) => {

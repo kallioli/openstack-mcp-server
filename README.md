@@ -155,7 +155,8 @@ Modes can be combined:
 1. Create a confidential OpenID Connect client in your identity provider (Keycloak, Entra ID, Authentik…) with the
    redirect URI `https://<your-server>/oauth/callback`.
 2. Enter the public URL, issuer URL, client id and client secret in the portal (wizard or **Settings**).
-3. Add the server in your client with just its URL; the client handles the login.
+3. Add the server in your client with just its URL; the client handles the login. The user first approves the client
+   on a consent page showing where their access will be sent, then signs in at the identity provider.
 
 The **OAuth access** page grants shared connections to the people who sign in, through rules matching them by user id
 (`sub`), e-mail address or e-mail domain, with read-only mode and allowed services. E-mail and domain rules only match
