@@ -10,7 +10,7 @@ import { OpenStackClient } from "../src/openstack/client.js";
 import { OidcOAuthProvider } from "../src/oauth/provider.js";
 import { type OAuthIdentity, Store } from "../src/store/db.js";
 import { APP_CRED_PROJECT, AUTH_URL, PROJECTS, fakeCloud } from "./fake-openstack.js";
-import { ISSUER, fakeIdp } from "./fake-idp.js";
+import { ISSUER, consent, fakeIdp } from "./fake-idp.js";
 
 const PORT = 41_000 + Math.floor(Math.random() * 9_000);
 const BASE = `http://localhost:${PORT}`;
@@ -91,15 +91,15 @@ async function authorize() {
     })}`,
     { redirect: "manual" },
   );
-  const state = new URL(started.headers.get("location")!).searchParams.get("state")!;
-  return { client_id, verifier, state };
+  const { location, cookie } = await consent(started);
+  return { client_id, verifier, state: location.searchParams.get("state")!, cookie };
 }
 
 /** Runs the whole OAuth dance; returns the access token, or the error the client is redirected with. */
 async function signIn(who: Record<string, unknown>): Promise<{ accessToken?: string; error?: string; description?: string }> {
   idp.setIdentity(who);
-  const { client_id, verifier, state } = await authorize();
-  const callback = await fetch(`${BASE}/oauth/callback?code=c&state=${encodeURIComponent(state)}`, { redirect: "manual" });
+  const { client_id, verifier, state, cookie } = await authorize();
+  const callback = await fetch(`${BASE}/oauth/callback?code=c&state=${encodeURIComponent(state)}`, { redirect: "manual", headers: { cookie } });
   const back = new URL(callback.headers.get("location")!);
   if (back.searchParams.get("error")) {
     return { error: back.searchParams.get("error")!, description: back.searchParams.get("error_description") ?? undefined };
@@ -195,10 +195,10 @@ describe("identity provider errors on the callback", () => {
   it("are logged and passed on to the client", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
-      const { state } = await authorize();
+      const { state, cookie } = await authorize();
       const callback = await fetch(
         `${BASE}/oauth/callback?${new URLSearchParams({ state, error: "invalid_scope", error_description: "Unknown scope\nfake log line" })}`,
-        { redirect: "manual" },
+        { redirect: "manual", headers: { cookie } },
       );
       const back = new URL(callback.headers.get("location")!);
       expect(back.searchParams.get("error")).toBe("server_error");

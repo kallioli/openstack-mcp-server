@@ -13,6 +13,13 @@ export const ACCESS_TOKEN_PREFIX = "osmcp_";
 
 const PENDING_TTL = 10 * 60;
 const CODE_TTL = 5 * 60;
+/** Sliding: each refresh issues a new refresh token, so only clients unused for this long must sign in again. */
+const REFRESH_TTL = 30 * 24 * 3600;
+/**
+ * Ties an authorization to the browser that approved it: set with the consent page, checked when the user approves and
+ * when the identity provider sends them back, so a request started elsewhere cannot be completed in this browser.
+ */
+const BROWSER_COOKIE = "osmcp_authorization";
 
 export interface OidcOAuthOptions {
   /** OpenID Connect issuer; endpoints are discovered from /.well-known/openid-configuration unless given. */
@@ -53,6 +60,8 @@ interface PendingAuthorization {
   state?: string;
   codeChallenge: string;
   verifier: string;
+  /** Hash of the BROWSER_COOKIE nonce. */
+  browser: string;
 }
 
 interface AuthorizationCode {
@@ -72,6 +81,23 @@ interface SealedToken {
 
 function base64urlSha256(value: string): string {
   return createHash("sha256").update(value).digest("base64url");
+}
+
+function cookie(req: Request, name: string): string | undefined {
+  for (const part of (req.headers.cookie ?? "").split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(value.join("="));
+  }
+  return undefined;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
+/** Error page for a broken authorization: text only, nothing reflected. */
+function invalidRequest(res: Response): void {
+  res.status(400).type("text/plain").send("Invalid or expired authorization request. Please start the connection again.");
 }
 
 /**
@@ -135,26 +161,82 @@ export class OidcOAuthProvider implements OAuthServerProvider {
     };
   }
 
+  /**
+   * Any client can register itself, and the identity provider only sees this server's own client: the user approves
+   * here, knowing which application and which redirect address will receive their access (MCP "confused deputy").
+   */
   async authorize(client: OAuthClientInformationFull, params: AuthorizationParams, res: Response): Promise<void> {
-    const verifier = randomBytes(32).toString("base64url");
+    const nonce = randomBytes(32).toString("base64url");
     const pending: PendingAuthorization = {
       cid: base64urlSha256(client.client_id),
       redirectUri: params.redirectUri,
       state: params.state,
       codeChallenge: params.codeChallenge,
-      verifier,
+      verifier: randomBytes(32).toString("base64url"),
+      browser: base64urlSha256(nonce),
     };
-    const url = new URL((await this.discover()).authorize);
+    res.cookie(BROWSER_COOKIE, nonce, {
+      httpOnly: true,
+      secure: this.callbackUrl.protocol === "https:",
+      sameSite: "lax",
+      path: "/oauth",
+      maxAge: PENDING_TTL * 1000,
+    });
+    res
+      .set({
+        "Cache-Control": "no-store",
+        "X-Frame-Options": "DENY",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
+      })
+      .type("html")
+      .send(
+        consentPage({
+          clientName: client.client_name,
+          redirectHost: new URL(params.redirectUri).host,
+          action: new URL("/oauth/consent", this.options.publicUrl).href,
+          request: this.sealer.seal("consent", pending, PENDING_TTL),
+        }),
+      );
+  }
+
+  /** Express handler for POST /oauth/consent: on approval, sends the user to the identity provider. */
+  readonly handleConsent = async (req: Request, res: Response): Promise<void> => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const pending = typeof body.request === "string" ? this.sealer.open<PendingAuthorization>("consent", body.request) : undefined;
+    if (!pending || !this.sameBrowser(req, pending)) {
+      invalidRequest(res);
+      return;
+    }
+    if (body.decision !== "allow") {
+      const back = new URL(pending.redirectUri);
+      if (pending.state) back.searchParams.set("state", pending.state);
+      back.searchParams.set("error", "access_denied");
+      res.clearCookie(BROWSER_COOKIE, { path: "/oauth" }).redirect(303, back.href);
+      return;
+    }
+    let authorize: string;
+    try {
+      authorize = (await this.discover()).authorize;
+    } catch {
+      res.status(502).type("text/plain").send("The identity provider is unreachable. Please try again later.");
+      return;
+    }
+    const url = new URL(authorize);
     url.search = new URLSearchParams({
       response_type: "code",
       client_id: this.options.clientId,
       redirect_uri: this.callbackUrl.href,
       scope: this.options.scopes.join(" "),
       state: this.sealer.seal("pending", pending, PENDING_TTL),
-      code_challenge: base64urlSha256(verifier),
+      code_challenge: base64urlSha256(pending.verifier),
       code_challenge_method: "S256",
     }).toString();
-    res.redirect(302, url.href);
+    res.redirect(303, url.href);
+  };
+
+  private sameBrowser(req: Request, pending: PendingAuthorization): boolean {
+    const nonce = cookie(req, BROWSER_COOKIE);
+    return nonce !== undefined && base64urlSha256(nonce) === pending.browser;
   }
 
   /** Express handler for GET /oauth/callback, where the identity provider sends the user back. */
@@ -163,9 +245,15 @@ export class OidcOAuthProvider implements OAuthServerProvider {
     const pending = state ? this.sealer.open<PendingAuthorization>("pending", state) : undefined;
     if (!pending) {
       console.warn(`OAuth callback with an invalid or expired state${error ? ` (provider error: ${quote(error)} ${quote(description)})` : ""}`);
-      res.status(400).type("text/plain").send("Invalid or expired authorization request. Please start the connection again.");
+      invalidRequest(res);
       return;
     }
+    if (!this.sameBrowser(req, pending)) {
+      console.warn("OAuth callback from another browser than the one that approved the authorization");
+      invalidRequest(res);
+      return;
+    }
+    res.clearCookie(BROWSER_COOKIE, { path: "/oauth" });
     const back = new URL(pending.redirectUri);
     if (pending.state) back.searchParams.set("state", pending.state);
 
@@ -272,7 +360,7 @@ export class OidcOAuthProvider implements OAuthServerProvider {
       token_type: "Bearer",
       expires_in: expiresIn,
       ...(upstream.refresh_token
-        ? { refresh_token: this.sealer.seal("refresh", { cid, token: upstream.refresh_token, identity } satisfies SealedToken) }
+        ? { refresh_token: this.sealer.seal("refresh", { cid, token: upstream.refresh_token, identity } satisfies SealedToken, REFRESH_TTL) }
         : {}),
       scope: this.options.scopes.join(" "),
     };
@@ -332,6 +420,43 @@ export class OidcOAuthProvider implements OAuthServerProvider {
     }
     return { access_token: body.access_token, refresh_token: body.refresh_token, expires_in: body.expires_in, id_token: body.id_token };
   }
+}
+
+function consentPage(page: { clientName?: string; redirectHost: string; action: string; request: string }): string {
+  const name = page.clientName?.trim() ? escapeHtml(page.clientName.trim().slice(0, 100)) : "An unnamed application";
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Authorize access to OpenStack</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f5f6f8; color: #1d2433; margin: 0; padding: 16px; }
+  main { max-width: 440px; margin: 10vh auto; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgb(0 0 0 / 12%); }
+  h1 { font-size: 1.25rem; margin: 0 0 16px; }
+  code { font-size: 0.95em; word-break: break-all; }
+  .warn { color: #8a4b00; }
+  .actions { display: flex; gap: 8px; margin-top: 24px; }
+  button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #c4cad6; background: #fff; font-size: 1rem; cursor: pointer; }
+  button[value=allow] { background: #1f5fd6; border-color: #1f5fd6; color: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Authorize access to OpenStack</h1>
+  <p><strong>${name}</strong> asks to act on OpenStack with your identity. Your access will be sent to
+    <code>${escapeHtml(page.redirectHost)}</code>.</p>
+  <p class="warn">Only continue if you started this connection yourself and recognise this address.</p>
+  <form method="post" action="${escapeHtml(page.action)}">
+    <input type="hidden" name="request" value="${escapeHtml(page.request)}">
+    <div class="actions">
+      <button type="submit" name="decision" value="deny">Cancel</button>
+      <button type="submit" name="decision" value="allow">Continue</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>`;
 }
 
 /** Upstream values in logs are quoted and truncated so they cannot forge log lines. */

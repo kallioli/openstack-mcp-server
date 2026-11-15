@@ -102,12 +102,25 @@ export function identityV3(authUrl: string): string {
 const VERSION_SEGMENT = /^v\d+(\.\d+)?$/i;
 
 /**
+ * Why a path cannot be sent as is, if so: URL parsing resolves dot segments ("..", "%2e%2e") and reads "\" as "/", so
+ * such a path would reach another endpoint than the operation it was validated against.
+ */
+export function unsafePathReason(path: string): string | undefined {
+  if (path.includes("\\")) return 'backslashes ("\\") are not allowed in paths';
+  const dots = path.split("?")[0].split("/").find((s) => /^(\.|%2e){1,2}$/i.test(s));
+  if (dots !== undefined) return `"${dots}" segments are not allowed in paths`;
+  return undefined;
+}
+
+/**
  * Joins a service endpoint from the Keystone catalog and a path from the spec. Spec paths start with the API version
  * (/v2.1/servers), while endpoints may stop before it (https://neutron:9696), include it (https://nova/v2.1) or go
  * beyond it with the project id (https://cinder/v3/<project>, https://swift/v1/AUTH_<project>). The endpoint's version
  * wins, and what follows it is kept unless the path already starts with it.
  */
 export function joinEndpoint(endpoint: string, path: string): string {
+  const unsafe = unsafePathReason(path);
+  if (unsafe) throw new OpenStackError(`Invalid path ${path}: ${unsafe}.`);
   const url = new URL(endpoint);
   const base = url.pathname.split("/").filter(Boolean);
   const segments = path.split("/").filter(Boolean);
@@ -192,6 +205,8 @@ export class OpenStackClient {
   }
 
   private async send(url: string, init: RequestInit): Promise<Response> {
+    // Redirects are not followed: fetch would replay X-Auth-Token to whatever host the Location names.
+    init = { ...init, redirect: "manual" };
     let res = await this.fetchImpl(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
     if (res.status === 429 || res.status === 503) {
       const retryAfter = Number(res.headers.get("retry-after") ?? "NaN");

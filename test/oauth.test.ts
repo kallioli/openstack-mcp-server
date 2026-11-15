@@ -7,7 +7,7 @@ import { OpenStackClient } from "../src/openstack/client.js";
 import { OidcOAuthProvider } from "../src/oauth/provider.js";
 import { Sealer } from "../src/oauth/seal.js";
 import { AUTH_URL, fakeCloud } from "./fake-openstack.js";
-import { ISSUER, fakeIdp } from "./fake-idp.js";
+import { ISSUER, consent, fakeIdp } from "./fake-idp.js";
 
 const PORT = 40_000 + Math.floor(Math.random() * 10_000);
 const BASE = `http://localhost:${PORT}`;
@@ -89,7 +89,8 @@ describe("oauth flow", () => {
     const clientId: string = registration.client_id;
     expect(clientId).toBeTruthy();
 
-    // 2. Authorization request: redirected to the identity provider with this server's own client.
+    // 2. Authorization request: the user approves the client on the consent page, then is redirected to the identity
+    // provider with this server's own client.
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
     const authorize = await fetch(
@@ -103,8 +104,8 @@ describe("oauth flow", () => {
       })}`,
       { redirect: "manual" },
     );
-    expect(authorize.status).toBe(302);
-    const toIdp = new URL(authorize.headers.get("location")!);
+    expect(authorize.status).toBe(200);
+    const { location: toIdp, cookie } = await consent(authorize);
     expect(toIdp.origin + toIdp.pathname).toBe(`${ISSUER}/protocol/openid-connect/auth`);
     expect(toIdp.searchParams.get("scope")).toBe("openid email");
     expect(toIdp.searchParams.get("client_id")).toBe("app-id");
@@ -114,7 +115,7 @@ describe("oauth flow", () => {
     // 3. The identity provider sends the user back; the server exchanges the code and redirects to the client.
     const callback = await fetch(
       `${BASE}/oauth/callback?code=upstream-code&state=${encodeURIComponent(toIdp.searchParams.get("state")!)}`,
-      { redirect: "manual" },
+      { redirect: "manual", headers: { cookie } },
     );
     const toClient = new URL(callback.headers.get("location")!);
     expect(toClient.origin + toClient.pathname).toBe(REDIRECT);
@@ -184,10 +185,60 @@ describe("oauth flow", () => {
       })}`,
       { redirect: "manual" },
     );
-    const state = new URL(authorize.headers.get("location")!).searchParams.get("state")!;
-    const callback = await fetch(`${BASE}/oauth/callback?code=c&state=${encodeURIComponent(state)}`, { redirect: "manual" });
+    const { location, cookie } = await consent(authorize);
+    const state = location.searchParams.get("state")!;
+    const callback = await fetch(`${BASE}/oauth/callback?code=c&state=${encodeURIComponent(state)}`, { redirect: "manual", headers: { cookie } });
     const code = new URL(callback.headers.get("location")!).searchParams.get("code")!;
     const res = await fetch(`${BASE}/token`, form({ grant_type: "authorization_code", code, client_id: attacker, code_verifier: verifier, redirect_uri: REDIRECT }));
     expect(res.status).toBe(400);
+  });
+  it("asks the user to approve each client and binds the authorization to their browser", async () => {
+    const evil = "https://evil.example/cb";
+    const { client_id: clientId } = await (
+      await fetch(`${BASE}/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ redirect_uris: [evil], token_endpoint_auth_method: "none", client_name: "<b>Claude</b>" }),
+      })
+    ).json();
+    const start = () =>
+      fetch(
+        `${BASE}/authorize?${new URLSearchParams({
+          response_type: "code",
+          client_id: clientId,
+          redirect_uri: evil,
+          code_challenge: createHash("sha256").update("v".repeat(43)).digest("base64url"),
+          code_challenge_method: "S256",
+          state: "s",
+        })}`,
+        { redirect: "manual" },
+      );
+
+    // The consent page names the client (escaped) and where the access goes, and cannot be framed.
+    const page = await start();
+    expect(page.headers.get("x-frame-options")).toBe("DENY");
+    const html = await page.clone().text();
+    expect(html).toContain("evil.example");
+    expect(html).toContain("&#60;b&#62;Claude&#60;/b&#62;");
+    expect(html).not.toContain("<b>Claude");
+
+    // Declining goes back to the client with access_denied.
+    const declined = await consent(await start(), "deny");
+    expect(declined.location.origin + declined.location.pathname).toBe(evil);
+    expect(declined.location.searchParams.get("error")).toBe("access_denied");
+
+    // Approving without the browser's cookie (a forged cross-site form) is refused.
+    const request = html.match(/name="request" value="([^"]+)"/)![1];
+    const forged = await fetch(`${BASE}/oauth/consent`, form({ request, decision: "allow" }));
+    expect(forged.status).toBe(400);
+
+    // An authorization approved in one browser cannot be completed in another one.
+    const { location } = await consent(page);
+    const state = encodeURIComponent(location.searchParams.get("state")!);
+    const other = await consent(await start());
+    for (const headers of [{}, { cookie: other.cookie }]) {
+      const callback = await fetch(`${BASE}/oauth/callback?code=c&state=${state}`, { redirect: "manual", headers });
+      expect(callback.status).toBe(400);
+    }
   });
 });
